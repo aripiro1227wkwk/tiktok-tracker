@@ -123,6 +123,40 @@
       line-height: 1.8;
     }
 
+    .record {
+      padding: 12px 0;
+      border-bottom: 1px solid #ddd;
+    }
+
+    .record:last-child {
+      border-bottom: none;
+    }
+
+    .record-date {
+      font-size: 12px;
+      font-weight: bold;
+      margin-bottom: 6px;
+    }
+
+    .record-number {
+      font-size: 18px;
+      font-weight: bold;
+      color: #d40000;
+    }
+
+    .record-stats {
+      margin-top: 5px;
+      color: #555;
+      font-size: 11px;
+      line-height: 1.7;
+    }
+
+    .no-record {
+      color: #777;
+      font-size: 12px;
+      line-height: 1.8;
+    }
+
     footer {
       padding: 20px;
       color: #666;
@@ -160,9 +194,9 @@
 
     <div class="main-count">
       <span class="label">再生数</span>
-      <span class="number" id="views">167,700</span>
+      <span class="number" id="views">---</span>
       <div class="difference" id="viewsDiff">
-        21:00 前日比：記録開始前
+        前回21:00比：---
       </div>
     </div>
 
@@ -170,28 +204,28 @@
 
       <div class="stat">
         <span class="stat-label">いいね</span>
-        <span class="stat-number" id="likes">24,200</span>
+        <span class="stat-number" id="likes">---</span>
       </div>
 
       <div class="stat">
         <span class="stat-label">コメント</span>
-        <span class="stat-number" id="comments">801</span>
+        <span class="stat-number" id="comments">---</span>
       </div>
 
       <div class="stat">
         <span class="stat-label">シェア</span>
-        <span class="stat-number" id="shares">1,434</span>
+        <span class="stat-number" id="shares">---</span>
       </div>
 
       <div class="stat">
         <span class="stat-label">保存</span>
-        <span class="stat-number" id="saves">2,312</span>
+        <span class="stat-number" id="saves">---</span>
       </div>
 
     </div>
 
-    <div class="updated">
-      現在は取得テスト時の数値を表示しています
+    <div class="updated" id="updated">
+      データ取得中...
     </div>
 
   </section>
@@ -203,9 +237,10 @@
       21:00 定点記録
     </h2>
 
-    <div class="notice">
-      毎日21:00の再生数・いいね数・コメント数・シェア数・保存数を記録します。<br>
-      記録開始後、前日の21:00との差を表示します。
+    <div id="history">
+      <div class="no-record">
+        記録を読み込んでいます...
+      </div>
     </div>
 
   </section>
@@ -229,63 +264,178 @@
   非公式ファンサイト<br>
   作成者：@mtkwk_info1126
 </footer>
-<script>
-  async function updateTikTokData() {
-    try {
-      const response = await fetch("/api/tiktok");
 
-      if (!response.ok) {
-        throw new Error("データ取得に失敗しました");
+
+<script>
+  const formatNumber = (number) => {
+    return Number(number || 0).toLocaleString("ja-JP");
+  };
+
+
+  const formatDifference = (number) => {
+    const value = Number(number || 0);
+
+    if (value > 0) {
+      return "+" + formatNumber(value);
+    }
+
+    if (value < 0) {
+      return "−" + formatNumber(Math.abs(value));
+    }
+
+    return "±0";
+  };
+
+
+  const formatDateTime = (dateString) => {
+    if (!dateString) {
+      return "---";
+    }
+
+    return new Date(dateString).toLocaleString("ja-JP", {
+      timeZone: "Asia/Tokyo",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit"
+    });
+  };
+
+
+  async function loadTikTokData() {
+
+    try {
+
+      const [currentResponse, historyResponse] = await Promise.all([
+        fetch("/api/tiktok"),
+        fetch("/api/history")
+      ]);
+
+
+      if (!currentResponse.ok) {
+        throw new Error("現在データの取得に失敗しました");
       }
 
-      const data = await response.json();
+      if (!historyResponse.ok) {
+        throw new Error("履歴データの取得に失敗しました");
+      }
 
-      const formatNumber = (number) => {
-        return Number(number).toLocaleString("ja-JP");
-      };
 
+      const currentData = await currentResponse.json();
+      const historyData = await historyResponse.json();
+
+
+      // 現在の最新データ
       document.getElementById("views").textContent =
-        formatNumber(data.views);
+        formatNumber(currentData.views);
 
       document.getElementById("likes").textContent =
-        formatNumber(data.likes);
+        formatNumber(currentData.likes);
 
       document.getElementById("comments").textContent =
-        formatNumber(data.comments);
+        formatNumber(currentData.comments);
 
       document.getElementById("shares").textContent =
-        formatNumber(data.shares);
+        formatNumber(currentData.shares);
 
       document.getElementById("saves").textContent =
-        formatNumber(data.saves);
+        formatNumber(currentData.saves);
 
-      const updated = document.querySelector(".updated");
 
-      const fetchedDate = new Date(data.fetched_at);
+      // 履歴
+      const records = Array.isArray(historyData.data)
+        ? historyData.data
+        : [];
 
-      updated.textContent =
-        "最終取得：" +
-        fetchedDate.toLocaleString("ja-JP", {
-          timeZone: "Asia/Tokyo",
-          year: "numeric",
-          month: "2-digit",
-          day: "2-digit",
-          hour: "2-digit",
-          minute: "2-digit"
-        });
+
+      const historyElement = document.getElementById("history");
+
+
+      if (records.length === 0) {
+
+        historyElement.innerHTML = `
+          <div class="no-record">
+            まだ21:00の記録がありません。
+          </div>
+        `;
+
+      } else {
+
+        historyElement.innerHTML = records.map((record) => {
+
+          return `
+            <div class="record">
+
+              <div class="record-date">
+                ${record.snapshot_date} 21:00
+              </div>
+
+              <div class="record-number">
+                ${formatNumber(record.views)} 回
+              </div>
+
+              <div class="record-stats">
+                いいね ${formatNumber(record.likes)}　
+                コメント ${formatNumber(record.comments)}<br>
+                シェア ${formatNumber(record.shares)}　
+                保存 ${formatNumber(record.saves)}
+              </div>
+
+            </div>
+          `;
+
+        }).join("");
+
+      }
+
+
+      // 前回の21:00記録との差
+      if (records.length >= 2) {
+
+        const latestRecord = records[0];
+        const previousRecord = records[1];
+
+        const difference =
+          Number(latestRecord.views) -
+          Number(previousRecord.views);
+
+        document.getElementById("viewsDiff").textContent =
+          "前回21:00比：" + formatDifference(difference);
+
+      } else {
+
+        document.getElementById("viewsDiff").textContent =
+          "前回21:00比：記録開始前";
+
+      }
+
+
+      document.getElementById("updated").textContent =
+        "現在の最新データ取得：" +
+        formatDateTime(currentData.fetched_at);
+
 
     } catch (error) {
+
       console.error(error);
 
-      document.querySelector(".updated").textContent =
-        "最新データを取得できませんでした";
+      document.getElementById("updated").textContent =
+        "データを取得できませんでした";
+
+      document.getElementById("history").innerHTML = `
+        <div class="no-record">
+          履歴データを取得できませんでした。
+        </div>
+      `;
+
     }
+
   }
 
-  updateTikTokData();
+
+  loadTikTokData();
 </script>
 
-</body>
-</html>
 </body>
 </html>
