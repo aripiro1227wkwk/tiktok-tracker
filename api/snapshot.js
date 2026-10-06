@@ -8,10 +8,13 @@ export default async function handler(req, res) {
   const supabaseSecretKey = process.env.SUPABASE_SECRET_KEY;
 
   if (!quanticApiKey || !supabaseUrl || !supabaseSecretKey) {
-    return res.status(500).json({
-      error: "Environment variables are not configured"
-    });
-  }
+  return res.status(500).json({
+    error: "Environment variables are not configured",
+    quanticApiKey: !!quanticApiKey,
+    supabaseUrl: !!supabaseUrl,
+    supabaseSecretKey: !!supabaseSecretKey
+  });
+}
 
   const videoUrl =
     "https://www.tiktok.com/@jr_official_tiktok/video/7693521058934033670";
