@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>TikTok Tracker</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: #f5f5f5;
+      color: #111;
+      font-family: "Meiryo UI", "Meiryo", sans-serif;
+    }
+
+    header {
+      background: #d40000;
+      color: white;
+      padding: 18px 15px;
+      text-align: center;
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: 22px;
+    }
+
+    header p {
+      margin: 6px 0 0;
+      font-size: 12px;
+    }
+
+    main {
+      width: min(100% - 24px, 650px);
+      margin: 18px auto 50px;
+    }
+
+    .card {
+      background: white;
+      border-radius: 12px;
+      padding: 18px;
+      margin-bottom: 16px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    }
+
+    .video-title {
+      font-size: 15px;
+      font-weight: bold;
+      line-height: 1.6;
+      margin-bottom: 16px;
+    }
+
+    .main-count {
+      text-align: center;
+      padding: 15px 0 20px;
+      border-bottom: 1px solid #ddd;
+    }
+
+    .main-count .label {
+      font-size: 14px;
+    }
+
+    .main-count .number {
+      display: block;
+      margin-top: 5px;
+      color: #d40000;
+      font-size: 36px;
+      font-weight: bold;
+    }
+
+    .difference {
+      margin-top: 5px;
+      font-size: 14px;
+      font-weight: bold;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 15px;
+    }
+
+    .stat {
+      background: #f7f7f7;
+      border-radius: 9px;
+      padding: 14px 8px;
+      text-align: center;
+    }
+
+    .stat-label {
+      display: block;
+      margin-bottom: 5px;
+      font-size: 12px;
+    }
+
+    .stat-number {
+      font-size: 20px;
+      font-weight: bold;
+    }
+
+    .updated {
+      margin-top: 15px;
+      color: #666;
+      font-size: 11px;
+      text-align: center;
+    }
+
+    .section-title {
+      margin: 0 0 12px;
+      padding-left: 8px;
+      border-left: 5px solid #d40000;
+      font-size: 17px;
+    }
+
+    .notice {
+      font-size: 12px;
+      line-height: 1.8;
+    }
+
+    footer {
+      padding: 20px;
+      color: #666;
+      font-size: 11px;
+      text-align: center;
+    }
+
+    @media (max-width: 480px) {
+      header h1 {
+        font-size: 20px;
+      }
+
+      .main-count .number {
+        font-size: 32px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+<header>
+  <h1>TikTok Tracker</h1>
+  <p>再生数・反応数 定点記録</p>
+</header>
+
+<main>
+
+  <section class="card">
+
+    <div class="video-title">
+      この中にも鬼がいる...!? 👹<br>
+      川﨑皇輝 / 内村颯太 / 元木湧 / 北川拓実 / 安嶋秀生 / 松尾龍
+    </div>
+
+    <div class="main-count">
+      <span class="label">再生数</span>
+      <span class="number" id="views">167,700</span>
+      <div class="difference" id="viewsDiff">
+        21:00 前日比：記録開始前
+      </div>
+    </div>
+
+    <div class="stats">
+
+      <div class="stat">
+        <span class="stat-label">いいね</span>
+        <span class="stat-number" id="likes">24,200</span>
+      </div>
+
+      <div class="stat">
+        <span class="stat-label">コメント</span>
+        <span class="stat-number" id="comments">801</span>
+      </div>
+
+      <div class="stat">
+        <span class="stat-label">シェア</span>
+        <span class="stat-number" id="shares">1,434</span>
+      </div>
+
+      <div class="stat">
+        <span class="stat-label">保存</span>
+        <span class="stat-number" id="saves">2,312</span>
+      </div>
+
+    </div>
+
+    <div class="updated">
+      現在は取得テスト時の数値を表示しています
+    </div>
+
+  </section>
+
+
+  <section class="card">
+
+    <h2 class="section-title">
+      21:00 定点記録
+    </h2>
+
+    <div class="notice">
+      毎日21:00の再生数・いいね数・コメント数・シェア数・保存数を記録します。<br>
+      記録開始後、前日の21:00との差を表示します。
+    </div>
+
+  </section>
+
+
+  <section class="card">
+
+    <h2 class="section-title">
+      過去動画との比較
+    </h2>
+
+    <div class="notice">
+      記録した動画のデータを使って、過去動画との再生数推移を比較できるようにする予定です。
+    </div>
+
+  </section>
+
+</main>
+
+<footer>
+  非公式ファンサイト<br>
+  作成者：@mtkwk_info1126
+</footer>
+
+</body>
+</html>
