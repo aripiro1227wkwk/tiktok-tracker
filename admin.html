@@ -141,7 +141,9 @@
 <main>
 
   <section class="card">
-
+<div id="currentVideo" class="notice" style="margin-top: 0; margin-bottom: 22px;">
+  現在追跡中の動画を読み込んでいます...
+</div>
     <h2>新しい動画に変更</h2>
 
     <label for="videoUrl">
@@ -188,6 +190,43 @@
 <script>
   const button = document.getElementById("changeButton");
   const message = document.getElementById("message");
+
+  const currentVideo = document.getElementById("currentVideo");
+
+async function loadCurrentVideo() {
+  try {
+    const response = await fetch("/api/records");
+    const data = await response.json();
+
+    if (!response.ok || !data.current_video) {
+      throw new Error();
+    }
+
+    const video = data.current_video;
+
+    const startedAt = video.tracking_started_at
+      ? new Date(video.tracking_started_at).toLocaleString("ja-JP", {
+          timeZone: "Asia/Tokyo",
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+          hour: "2-digit",
+          minute: "2-digit"
+        })
+      : "---";
+
+    currentVideo.innerHTML = `
+      <strong>現在追跡中</strong><br>
+      ${video.video_url}<br>
+      追跡開始：${startedAt}
+    `;
+  } catch (error) {
+    currentVideo.textContent =
+      "現在追跡中の動画を取得できませんでした。";
+  }
+}
+
+loadCurrentVideo();
 
   button.addEventListener("click", async () => {
 
@@ -247,13 +286,15 @@
       }
 
       message.className = "message success";
-     if (data.changed === false) {
+    if (data.changed === false) {
   message.textContent =
     "この動画は現在追跡中です。設定は変更していません。";
 } else {
   message.textContent =
-    "新しい動画に変更しました。次回の定点記録から追跡を開始します。";
-} 
+    "新しい動画に変更しました。次回の定点記録から追跡を開始します.";
+
+  await loadCurrentVideo();
+}
 
       document.getElementById("videoUrl").value = "";
 
