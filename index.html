@@ -267,8 +267,8 @@
     </div>
 
     <div class="graph-note">
-      3時間ごとの定点記録を表示します。<br>
-      記録開始から7日間のデータが対象です。
+      動画の追跡開始をDAY1として、3時間ごとの定点記録を表示します。<br>
+      DAY1〜DAY7の7日間が対象です。
     </div>
 
   </section>
@@ -300,6 +300,7 @@
 <script>
 
   let viewsChart = null;
+
 
   const formatNumber = (number) => {
     return Number(number || 0).toLocaleString("ja-JP");
@@ -339,51 +340,68 @@
   };
 
 
-  function createGraph(records) {
+  function createGraph(records, trackingStartedAt) {
 
-    const graphRecords = [...records]
-      .filter(record => record.recorded_at)
-      .sort(
-        (a, b) =>
-          new Date(a.recorded_at) -
-          new Date(b.recorded_at)
-      );
+    if (!trackingStartedAt) {
+      return;
+    }
+
+    const startTime =
+      new Date(trackingStartedAt);
+
+    if (Number.isNaN(startTime.getTime())) {
+      return;
+    }
+
+    const sevenDays =
+      7 * 24 * 60 * 60 * 1000;
+
+
+    const graphRecords =
+      [...records]
+        .filter(record => {
+
+          if (!record.recorded_at) {
+            return false;
+          }
+
+          const recordTime =
+            new Date(record.recorded_at);
+
+          const elapsed =
+            recordTime - startTime;
+
+          return (
+            elapsed >= 0 &&
+            elapsed < sevenDays
+          );
+        })
+        .sort(
+          (a, b) =>
+            new Date(a.recorded_at) -
+            new Date(b.recorded_at)
+        );
+
 
     if (graphRecords.length === 0) {
       return;
     }
 
-    const firstTime =
-      new Date(graphRecords[0].recorded_at);
-
-    const sevenDays =
-      7 * 24 * 60 * 60 * 1000;
-
-    const records7Days =
-      graphRecords.filter(record => {
-
-        const recordTime =
-          new Date(record.recorded_at);
-
-        return (
-          recordTime - firstTime >= 0 &&
-          recordTime - firstTime < sevenDays
-        );
-      });
-
 
     const labels =
-      records7Days.map(record => {
+      graphRecords.map(record => {
 
         const recordTime =
           new Date(record.recorded_at);
 
-        const hours =
-          (recordTime - firstTime) /
-          (1000 * 60 * 60);
+        const elapsed =
+          recordTime - startTime;
 
         const day =
-          Math.floor(hours / 24) + 1;
+          Math.floor(
+            elapsed /
+            (24 * 60 * 60 * 1000)
+          ) + 1;
 
         const japanTime =
           recordTime.toLocaleTimeString(
@@ -400,7 +418,7 @@
 
 
     const views =
-      records7Days.map(record =>
+      graphRecords.map(record =>
         Number(record.views || 0)
       );
 
@@ -504,10 +522,11 @@
 
     try {
 
-      // Supabaseに保存済みの記録だけ取得
-      // QuanticDataはここでは呼ばない
+      // Supabaseに保存済みのデータだけ取得
+      // 公開サイトからQuanticDataは呼ばない
       const response =
         await fetch("/api/records");
+
 
       if (!response.ok) {
         throw new Error(
@@ -515,26 +534,39 @@
         );
       }
 
+
       const result =
         await response.json();
 
-      const allRecords =
+
+      const currentVideo =
+        result.current_video || {};
+
+
+      const trackingStartedAt =
+        currentVideo.tracking_started_at;
+
+
+      const records =
         Array.isArray(result.data)
           ? result.data
           : [];
 
 
-      if (allRecords.length === 0) {
+      if (records.length === 0) {
 
         document.getElementById(
           "videoTitle"
         ).textContent =
-          "まだ定点記録がありません。";
+          "現在の動画は設定済みです。最初の定点記録を待っています。";
 
         document.getElementById(
           "updated"
         ).textContent =
-          "最初の定点記録を待っています。";
+          trackingStartedAt
+            ? "追跡開始：" +
+              formatDateTime(trackingStartedAt)
+            : "最初の定点記録を待っています。";
 
         document.getElementById(
           "history"
@@ -548,21 +580,10 @@
       }
 
 
-      // 一番新しい記録の動画を現在の動画として扱う
+      // records.jsですでに現在の動画だけに
+      // 絞り込まれている
       const latestRecord =
-        allRecords[0];
-
-      const currentVideoId =
-        latestRecord.video_id;
-
-
-      // 現在の動画だけに絞る
-      const records =
-        allRecords.filter(
-          record =>
-            String(record.video_id) ===
-            String(currentVideoId)
-        );
+        records[0];
 
 
       document.getElementById(
@@ -645,6 +666,7 @@
             let differenceText =
               "最初の記録";
 
+
             if (index < records.length - 1) {
 
               const difference =
@@ -669,10 +691,47 @@
                 : "";
 
 
+            let dayText = "";
+
+
+            if (
+              trackingStartedAt &&
+              record.recorded_at
+            ) {
+
+              const startTime =
+                new Date(trackingStartedAt);
+
+              const recordTime =
+                new Date(record.recorded_at);
+
+              const elapsed =
+                recordTime - startTime;
+
+
+              if (
+                !Number.isNaN(startTime.getTime()) &&
+                elapsed >= 0
+              ) {
+
+                const day =
+                  Math.floor(
+                    elapsed /
+                    (24 * 60 * 60 * 1000)
+                  ) + 1;
+
+                if (day <= 7) {
+                  dayText = `DAY${day} / `;
+                }
+              }
+            }
+
+
             return `
               <div class="record">
 
                 <div class="record-date">
+                  ${dayText}
                   ${record.snapshot_date}
                   ${hour}
                 </div>
@@ -707,7 +766,11 @@
         ).join("");
 
 
-      createGraph(records);
+      createGraph(
+        records,
+        trackingStartedAt
+      );
+
 
     } catch (error) {
 
