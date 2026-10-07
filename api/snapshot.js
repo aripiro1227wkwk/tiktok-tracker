@@ -3,9 +3,9 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  // 日本時間を取得
   const now = new Date();
 
+  // 日本時間の現在時刻
   const japanHour = Number(
     new Intl.DateTimeFormat("en-US", {
       timeZone: "Asia/Tokyo",
@@ -14,12 +14,15 @@ export default async function handler(req, res) {
     }).format(now)
   );
 
-  // 21時台以外は保存しない
-  if (japanHour !== 21) {
+  // 0・3・6・9・12・15・18・21時台だけ保存
+  const snapshotHours = [0, 3, 6, 9, 12, 15, 18, 21];
+
+  if (!snapshotHours.includes(japanHour)) {
     return res.status(200).json({
       success: false,
       saved: false,
-      message: "21:00 JST recording window only"
+      message: "Not a 3-hour snapshot window",
+      japan_hour: japanHour
     });
   }
 
@@ -82,22 +85,59 @@ export default async function handler(req, res) {
       day: "2-digit"
     }).format(now);
 
+    // Supabaseに同じ日時の記録があるか確認
+    const checkUrl =
+      `${supabaseUrl}/rest/v1/tiktok_snapshots` +
+      `?video_id=eq.${encodeURIComponent(video.video_id)}` +
+      `&snapshot_date=eq.${snapshotDate}` +
+      `&snapshot_hour=eq.${japanHour}` +
+      `&select=id`;
+
+    const checkResponse = await fetch(checkUrl, {
+      method: "GET",
+      headers: {
+        apikey: supabaseSecretKey,
+        Authorization: `Bearer ${supabaseSecretKey}`
+      }
+    });
+
+    const existingData = await checkResponse.json();
+
+    if (!checkResponse.ok) {
+      return res.status(checkResponse.status).json({
+        error: "Supabase duplicate check failed",
+        details: existingData
+      });
+    }
+
+    // 同じ動画・日付・時間帯がすでにあれば保存しない
+    if (existingData.length > 0) {
+      return res.status(200).json({
+        success: true,
+        saved: false,
+        message: "Snapshot already exists",
+        snapshot_date: snapshotDate,
+        snapshot_hour: japanHour
+      });
+    }
+
     // Supabaseへ保存
     const saveResponse = await fetch(
-      `${supabaseUrl}/rest/v1/tiktok_snapshots?on_conflict=video_id,snapshot_date`,
+      `${supabaseUrl}/rest/v1/tiktok_snapshots`,
       {
         method: "POST",
         headers: {
           apikey: supabaseSecretKey,
           Authorization: `Bearer ${supabaseSecretKey}`,
           "Content-Type": "application/json",
-          Prefer: "resolution=merge-duplicates,return=representation"
+          Prefer: "return=representation"
         },
         body: JSON.stringify({
           video_id: video.video_id,
           video_url: video.url,
           description: video.description || "",
           snapshot_date: snapshotDate,
+          snapshot_hour: japanHour,
           views: video.views || 0,
           likes: video.likes || 0,
           comments: video.comments || 0,
@@ -120,6 +160,7 @@ export default async function handler(req, res) {
       success: true,
       saved: true,
       snapshot_date: snapshotDate,
+      snapshot_hour: japanHour,
       data: savedData
     });
 
