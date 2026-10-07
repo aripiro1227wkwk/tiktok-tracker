@@ -339,6 +339,22 @@
     });
   };
 
+  const formatSnapshotDateTime = (record) => {
+
+    if (
+      !record ||
+      !record.snapshot_date ||
+      record.snapshot_hour === null ||
+      record.snapshot_hour === undefined
+    ) {
+      return "---";
+    }
+
+    const hour =
+      String(record.snapshot_hour).padStart(2, "0");
+
+    return `${record.snapshot_date.replaceAll("-", "/")} ${hour}:00`;
+  };
 
   function createGraph(records, trackingStartedAt) {
 
@@ -403,15 +419,9 @@
             (24 * 60 * 60 * 1000)
           ) + 1;
 
-        const japanTime =
-          recordTime.toLocaleTimeString(
-            "ja-JP",
-            {
-              timeZone: "Asia/Tokyo",
-              hour: "2-digit",
-              minute: "2-digit"
-            }
-          );
+       const japanTime =
+  String(record.snapshot_hour).padStart(2, "0") +
+  ":00";
 
         return `DAY${day} ${japanTime}`;
       });
@@ -645,12 +655,10 @@
 
 
       document.getElementById(
-        "updated"
-      ).textContent =
-        "最新定点記録：" +
-        formatDateTime(
-          latestRecord.recorded_at
-        );
+  "updated"
+).textContent =
+  "最新定点記録：" +
+  formatSnapshotDateTime(latestRecord);
 
 
       const historyElement =
