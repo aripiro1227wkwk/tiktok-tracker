@@ -161,16 +161,31 @@ export default async function handler(req, res) {
       });
     }
 
-    const results =
-      tiktokData?.payload?.results ||
-      tiktokData?.results ||
-      [];
+   const results =
+  tiktokData?.payload?.results ||
+  tiktokData?.results ||
+  [];
 
-    if (results.length === 0) {
-      return res.status(404).json({
-        error: "TikTok video data was not found"
-      });
+if (!Array.isArray(results) || results.length === 0) {
+  console.error("QuanticData response:", JSON.stringify(tiktokData));
+
+  return res.status(404).json({
+    error: "TikTok video data was not found",
+    debug: {
+      top_level_keys:
+        tiktokData && typeof tiktokData === "object"
+          ? Object.keys(tiktokData)
+          : [],
+      payload_keys:
+        tiktokData?.payload &&
+        typeof tiktokData.payload === "object"
+          ? Object.keys(tiktokData.payload)
+          : [],
+      status: tiktokData?.status || null,
+      message: tiktokData?.message || null
     }
+  });
+}
 
     const video = results[0];
 
