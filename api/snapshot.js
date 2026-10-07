@@ -7,7 +7,7 @@ export default async function handler(req, res) {
 
   const now = new Date();
 
-  // 日本時間の現在時刻
+  // 日本時間
   const japanHour = Number(
     new Intl.DateTimeFormat("en-US", {
       timeZone: "Asia/Tokyo",
@@ -16,7 +16,7 @@ export default async function handler(req, res) {
     }).format(now)
   );
 
-  // 3時間ごとの記録時間
+  // 3時間ごとの記録
   const snapshotHours = [0, 3, 6, 9, 12, 15, 18, 21];
 
   if (!snapshotHours.includes(japanHour)) {
@@ -38,13 +38,54 @@ export default async function handler(req, res) {
     });
   }
 
-  const videoId = "7693521058934033670";
-
-  const videoUrl =
-    "https://www.tiktok.com/@jr_official_tiktok/video/7693521058934033670";
-
   try {
-    // 日本時間の日付
+    // ----------------------------------------
+    // ① 現在追跡中の動画をSupabaseから取得
+    // ----------------------------------------
+
+    const settingsResponse = await fetch(
+      `${supabaseUrl}/rest/v1/tiktok_settings` +
+      `?select=video_id,video_url,tracking_started_at` +
+      `&order=id.desc&limit=1`,
+      {
+        method: "GET",
+        headers: {
+          apikey: supabaseSecretKey,
+          Authorization: `Bearer ${supabaseSecretKey}`
+        }
+      }
+    );
+
+    const settingsData = await settingsResponse.json();
+
+    if (!settingsResponse.ok) {
+      return res.status(settingsResponse.status).json({
+        error: "TikTok settings could not be retrieved",
+        details: settingsData
+      });
+    }
+
+    if (!Array.isArray(settingsData) || settingsData.length === 0) {
+      return res.status(404).json({
+        error: "No tracking video is configured"
+      });
+    }
+
+    const currentVideo = settingsData[0];
+
+    const videoId = currentVideo.video_id;
+    const videoUrl = currentVideo.video_url;
+
+    if (!videoId || !videoUrl) {
+      return res.status(500).json({
+        error: "Tracking video settings are incomplete"
+      });
+    }
+
+    // ----------------------------------------
+    // ② 日本時間の日付
+    // ----------------------------------------
+
     const snapshotDate = new Intl.DateTimeFormat("en-CA", {
       timeZone: "Asia/Tokyo",
       year: "numeric",
@@ -52,7 +93,11 @@ export default async function handler(req, res) {
       day: "2-digit"
     }).format(now);
 
-    // ① 先にSupabaseを確認
+    // ----------------------------------------
+    // ③ 同じ動画・日付・時間の記録があるか確認
+    // QuanticDataを呼ぶ前に確認する
+    // ----------------------------------------
+
     const checkUrl =
       `${supabaseUrl}/rest/v1/tiktok_snapshots` +
       `?video_id=eq.${encodeURIComponent(videoId)}` +
@@ -77,19 +122,22 @@ export default async function handler(req, res) {
       });
     }
 
-    // ② すでに記録済みならここで終了
-    // QuanticDataは呼ばない
+    // すでに記録済みならQuanticDataを使わず終了
     if (existingData.length > 0) {
       return res.status(200).json({
         success: true,
         saved: false,
         message: "Snapshot already exists",
+        video_id: videoId,
         snapshot_date: snapshotDate,
         snapshot_hour: japanHour
       });
     }
 
-    // ③ 未記録のときだけQuanticDataを呼ぶ
+    // ----------------------------------------
+    // ④ 未記録の場合だけQuanticDataを呼ぶ
+    // ----------------------------------------
+
     const tiktokResponse = await fetch(
       "https://api.quanticdata.io/v1/scraper/collectors/tiktok_video/run",
       {
@@ -126,7 +174,10 @@ export default async function handler(req, res) {
 
     const video = results[0];
 
-    // ④ Supabaseへ保存
+    // ----------------------------------------
+    // ⑤ Supabaseへ保存
+    // ----------------------------------------
+
     const saveResponse = await fetch(
       `${supabaseUrl}/rest/v1/tiktok_snapshots`,
       {
@@ -164,6 +215,7 @@ export default async function handler(req, res) {
     return res.status(200).json({
       success: true,
       saved: true,
+      video_id: videoId,
       snapshot_date: snapshotDate,
       snapshot_hour: japanHour,
       data: savedData
