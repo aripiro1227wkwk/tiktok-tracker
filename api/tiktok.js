@@ -5,75 +5,89 @@ export default async function handler(req, res) {
     });
   }
 
-  const apiKey = process.env.QUANTICDATA_API_KEY;
+  const supabaseUrl = process.env.SUPABASE_URL;
+  const supabaseSecretKey = process.env.SUPABASE_SECRET_KEY;
 
-  if (!apiKey) {
+  if (!supabaseUrl || !supabaseSecretKey) {
     return res.status(500).json({
-      error: "API key is not configured"
+      error: "Supabase environment variables are not configured"
     });
   }
 
-  const videoUrl =
-    "https://www.tiktok.com/@jr_official_tiktok/video/7693521058934033670";
-
   try {
-    const response = await fetch(
-      "https://api.quanticdata.io/v1/scraper/collectors/tiktok_video/run",
+    // 現在追跡中の動画を取得
+    const settingsResponse = await fetch(
+      `${supabaseUrl}/rest/v1/tiktok_settings` +
+      `?select=video_id,video_url,tracking_started_at` +
+      `&order=id.desc&limit=1`,
       {
-        method: "POST",
         headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          videos: [videoUrl],
-          max_results: 1
-        })
+          apikey: supabaseSecretKey,
+          Authorization: `Bearer ${supabaseSecretKey}`
+        }
       }
     );
 
-    const data = await response.json();
+    const settingsData = await settingsResponse.json();
 
-    if (!response.ok) {
-      console.error("QuanticData error:", data);
-
-      return res.status(response.status).json({
-        error: "TikTok data could not be retrieved"
+    if (!settingsResponse.ok) {
+      return res.status(settingsResponse.status).json({
+        error: "TikTok settings could not be retrieved"
       });
     }
 
-    // QuanticData本番APIは payload.results に結果が入る
-    const results = data?.payload?.results || data?.results || [];
-
-    if (results.length === 0) {
+    if (!Array.isArray(settingsData) || settingsData.length === 0) {
       return res.status(404).json({
-        error: "TikTok video data was not found"
+        error: "No tracking video is configured"
       });
     }
 
-    const video = results[0];
+    const currentVideo = settingsData[0];
 
-    // ブラウザには必要な情報だけ返す
+    // Supabaseに保存済みの最新記録だけ取得
+    const recordResponse = await fetch(
+      `${supabaseUrl}/rest/v1/tiktok_snapshots` +
+      `?video_id=eq.${encodeURIComponent(currentVideo.video_id)}` +
+      `&select=video_id,video_url,description,snapshot_date,snapshot_hour,views,likes,comments,shares,saves,recorded_at` +
+      `&order=recorded_at.desc&limit=1`,
+      {
+        headers: {
+          apikey: supabaseSecretKey,
+          Authorization: `Bearer ${supabaseSecretKey}`
+        }
+      }
+    );
+
+    const recordData = await recordResponse.json();
+
+    if (!recordResponse.ok) {
+      return res.status(recordResponse.status).json({
+        error: "Latest snapshot could not be retrieved"
+      });
+    }
+
+    if (!Array.isArray(recordData) || recordData.length === 0) {
+      return res.status(200).json({
+        success: true,
+        has_record: false,
+        video_id: currentVideo.video_id,
+        video_url: currentVideo.video_url,
+        tracking_started_at: currentVideo.tracking_started_at
+      });
+    }
+
     return res.status(200).json({
-      video_id: video.video_id,
-      url: video.url,
-      description: video.description,
-      created_at: video.created_at,
-
-      views: video.views,
-      likes: video.likes,
-      comments: video.comments,
-      shares: video.shares,
-      saves: video.saves,
-
-      fetched_at: new Date().toISOString()
+      success: true,
+      has_record: true,
+      tracking_started_at: currentVideo.tracking_started_at,
+      ...recordData[0]
     });
 
   } catch (error) {
-    console.error("TikTok API error:", error);
+    console.error(error);
 
     return res.status(500).json({
-      error: "Failed to retrieve TikTok data"
+      error: "Latest snapshot fetch failed"
     });
   }
 }
