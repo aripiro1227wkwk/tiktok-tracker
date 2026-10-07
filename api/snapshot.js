@@ -1,6 +1,8 @@
 export default async function handler(req, res) {
   if (req.method !== "GET") {
-    return res.status(405).json({ error: "Method not allowed" });
+    return res.status(405).json({
+      error: "Method not allowed"
+    });
   }
 
   const now = new Date();
@@ -14,7 +16,7 @@ export default async function handler(req, res) {
     }).format(now)
   );
 
-  // 0・3・6・9・12・15・18・21時台だけ保存
+  // 3時間ごとの記録時間
   const snapshotHours = [0, 3, 6, 9, 12, 15, 18, 21];
 
   if (!snapshotHours.includes(japanHour)) {
@@ -36,11 +38,58 @@ export default async function handler(req, res) {
     });
   }
 
+  const videoId = "7693521058934033670";
+
   const videoUrl =
     "https://www.tiktok.com/@jr_official_tiktok/video/7693521058934033670";
 
   try {
-    // TikTokの最新データを取得
+    // 日本時間の日付
+    const snapshotDate = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Asia/Tokyo",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit"
+    }).format(now);
+
+    // ① 先にSupabaseを確認
+    const checkUrl =
+      `${supabaseUrl}/rest/v1/tiktok_snapshots` +
+      `?video_id=eq.${encodeURIComponent(videoId)}` +
+      `&snapshot_date=eq.${snapshotDate}` +
+      `&snapshot_hour=eq.${japanHour}` +
+      `&select=id`;
+
+    const checkResponse = await fetch(checkUrl, {
+      method: "GET",
+      headers: {
+        apikey: supabaseSecretKey,
+        Authorization: `Bearer ${supabaseSecretKey}`
+      }
+    });
+
+    const existingData = await checkResponse.json();
+
+    if (!checkResponse.ok) {
+      return res.status(checkResponse.status).json({
+        error: "Supabase duplicate check failed",
+        details: existingData
+      });
+    }
+
+    // ② すでに記録済みならここで終了
+    // QuanticDataは呼ばない
+    if (existingData.length > 0) {
+      return res.status(200).json({
+        success: true,
+        saved: false,
+        message: "Snapshot already exists",
+        snapshot_date: snapshotDate,
+        snapshot_hour: japanHour
+      });
+    }
+
+    // ③ 未記録のときだけQuanticDataを呼ぶ
     const tiktokResponse = await fetch(
       "https://api.quanticdata.io/v1/scraper/collectors/tiktok_video/run",
       {
@@ -77,51 +126,7 @@ export default async function handler(req, res) {
 
     const video = results[0];
 
-    // 日本時間の日付
-    const snapshotDate = new Intl.DateTimeFormat("en-CA", {
-      timeZone: "Asia/Tokyo",
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit"
-    }).format(now);
-
-    // Supabaseに同じ日時の記録があるか確認
-    const checkUrl =
-      `${supabaseUrl}/rest/v1/tiktok_snapshots` +
-      `?video_id=eq.${encodeURIComponent(video.video_id)}` +
-      `&snapshot_date=eq.${snapshotDate}` +
-      `&snapshot_hour=eq.${japanHour}` +
-      `&select=id`;
-
-    const checkResponse = await fetch(checkUrl, {
-      method: "GET",
-      headers: {
-        apikey: supabaseSecretKey,
-        Authorization: `Bearer ${supabaseSecretKey}`
-      }
-    });
-
-    const existingData = await checkResponse.json();
-
-    if (!checkResponse.ok) {
-      return res.status(checkResponse.status).json({
-        error: "Supabase duplicate check failed",
-        details: existingData
-      });
-    }
-
-    // 同じ動画・日付・時間帯がすでにあれば保存しない
-    if (existingData.length > 0) {
-      return res.status(200).json({
-        success: true,
-        saved: false,
-        message: "Snapshot already exists",
-        snapshot_date: snapshotDate,
-        snapshot_hour: japanHour
-      });
-    }
-
-    // Supabaseへ保存
+    // ④ Supabaseへ保存
     const saveResponse = await fetch(
       `${supabaseUrl}/rest/v1/tiktok_snapshots`,
       {
@@ -133,8 +138,8 @@ export default async function handler(req, res) {
           Prefer: "return=representation"
         },
         body: JSON.stringify({
-          video_id: video.video_id,
-          video_url: video.url,
+          video_id: video.video_id || videoId,
+          video_url: video.url || videoUrl,
           description: video.description || "",
           snapshot_date: snapshotDate,
           snapshot_hour: japanHour,
