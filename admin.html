@@ -247,8 +247,13 @@
       }
 
       message.className = "message success";
-      message.textContent =
-        "新しい動画に変更しました。次回の定点記録から追跡を開始します。";
+     if (data.changed === false) {
+  message.textContent =
+    "この動画は現在追跡中です。設定は変更していません。";
+} else {
+  message.textContent =
+    "新しい動画に変更しました。次回の定点記録から追跡を開始します。";
+} 
 
       document.getElementById("videoUrl").value = "";
 
