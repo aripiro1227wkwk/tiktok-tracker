@@ -3,18 +3,35 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
+  // 日本時間を取得
+  const now = new Date();
+
+  const japanHour = Number(
+    new Intl.DateTimeFormat("en-US", {
+      timeZone: "Asia/Tokyo",
+      hour: "2-digit",
+      hourCycle: "h23"
+    }).format(now)
+  );
+
+  // 21時台以外は保存しない
+  if (japanHour !== 21) {
+    return res.status(200).json({
+      success: false,
+      saved: false,
+      message: "21:00 JST recording window only"
+    });
+  }
+
   const quanticApiKey = process.env.QUANTICDATA_API_KEY;
   const supabaseUrl = process.env.SUPABASE_URL;
   const supabaseSecretKey = process.env.SUPABASE_SECRET_KEY;
 
   if (!quanticApiKey || !supabaseUrl || !supabaseSecretKey) {
-  return res.status(500).json({
-    error: "Environment variables are not configured",
-    quanticApiKey: !!quanticApiKey,
-    supabaseUrl: !!supabaseUrl,
-    supabaseSecretKey: !!supabaseSecretKey
-  });
-}
+    return res.status(500).json({
+      error: "Environment variables are not configured"
+    });
+  }
 
   const videoUrl =
     "https://www.tiktok.com/@jr_official_tiktok/video/7693521058934033670";
@@ -57,13 +74,13 @@ export default async function handler(req, res) {
 
     const video = results[0];
 
-    // 日本時間で今日の日付を作る
+    // 日本時間の日付
     const snapshotDate = new Intl.DateTimeFormat("en-CA", {
       timeZone: "Asia/Tokyo",
       year: "numeric",
       month: "2-digit",
       day: "2-digit"
-    }).format(new Date());
+    }).format(now);
 
     // Supabaseへ保存
     const saveResponse = await fetch(
@@ -101,6 +118,7 @@ export default async function handler(req, res) {
 
     return res.status(200).json({
       success: true,
+      saved: true,
       snapshot_date: snapshotDate,
       data: savedData
     });
