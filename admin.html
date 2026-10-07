@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>TikTok Tracker 管理画面</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: #f5f5f5;
+      color: #111;
+      font-family: "Meiryo UI", "Meiryo", sans-serif;
+    }
+
+    header {
+      background: #d40000;
+      color: white;
+      padding: 20px 15px;
+      text-align: center;
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: 21px;
+    }
+
+    header p {
+      margin: 7px 0 0;
+      font-size: 12px;
+    }
+
+    main {
+      width: min(100% - 24px, 600px);
+      margin: 20px auto 50px;
+    }
+
+    .card {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    }
+
+    h2 {
+      margin: 0 0 18px;
+      padding-left: 8px;
+      border-left: 5px solid #d40000;
+      font-size: 17px;
+    }
+
+    label {
+      display: block;
+      margin: 18px 0 7px;
+      font-size: 13px;
+      font-weight: bold;
+    }
+
+    input {
+      width: 100%;
+      padding: 13px;
+      border: 1px solid #bbb;
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 16px;
+    }
+
+    input:focus {
+      outline: 2px solid #d40000;
+      border-color: #d40000;
+    }
+
+    button {
+      width: 100%;
+      margin-top: 22px;
+      padding: 14px;
+      border: none;
+      border-radius: 8px;
+      background: #d40000;
+      color: white;
+      font-family: inherit;
+      font-size: 15px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    button:disabled {
+      background: #999;
+      cursor: default;
+    }
+
+    .notice {
+      margin-top: 18px;
+      color: #666;
+      font-size: 11px;
+      line-height: 1.8;
+    }
+
+    .message {
+      display: none;
+      margin-top: 18px;
+      padding: 13px;
+      border-radius: 8px;
+      font-size: 12px;
+      line-height: 1.7;
+    }
+
+    .success {
+      display: block;
+      background: #eef8ee;
+      color: #176317;
+    }
+
+    .error {
+      display: block;
+      background: #fff0f0;
+      color: #b00000;
+    }
+
+    footer {
+      padding: 20px;
+      color: #777;
+      font-size: 11px;
+      text-align: center;
+    }
+  </style>
+</head>
+
+<body>
+
+<header>
+  <h1>TikTok Tracker 管理画面</h1>
+  <p>追跡するTikTok動画を変更します</p>
+</header>
+
+<main>
+
+  <section class="card">
+
+    <h2>新しい動画に変更</h2>
+
+    <label for="videoUrl">
+      TikTok動画URL
+    </label>
+
+    <input
+      type="url"
+      id="videoUrl"
+      placeholder="https://www.tiktok.com/@.../video/..."
+      autocomplete="off"
+    >
+
+    <label for="adminKey">
+      管理キー
+    </label>
+
+    <input
+      type="password"
+      id="adminKey"
+      placeholder="ADMIN_KEY"
+      autocomplete="current-password"
+    >
+
+    <button id="changeButton">
+      新しい動画に変更する
+    </button>
+
+    <div id="message" class="message"></div>
+
+    <div class="notice">
+      新しい動画に変更しても、これまで記録した動画のデータは削除されません。<br>
+      次回の3時間ごとの記録から、新しく設定した動画を追跡します。
+    </div>
+
+  </section>
+
+</main>
+
+<footer>
+  管理者専用ページ
+</footer>
+
+<script>
+  const button = document.getElementById("changeButton");
+  const message = document.getElementById("message");
+
+  button.addEventListener("click", async () => {
+
+    const videoUrl =
+      document.getElementById("videoUrl").value.trim();
+
+    const adminKey =
+      document.getElementById("adminKey").value.trim();
+
+    message.className = "message";
+    message.textContent = "";
+
+    if (!videoUrl) {
+      message.className = "message error";
+      message.textContent =
+        "TikTok動画URLを入力してください。";
+      return;
+    }
+
+    if (!adminKey) {
+      message.className = "message error";
+      message.textContent =
+        "管理キーを入力してください。";
+      return;
+    }
+
+    const confirmed = confirm(
+      "追跡するTikTok動画を変更します。\nよろしいですか？"
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    button.disabled = true;
+    button.textContent = "変更中...";
+
+    try {
+
+      const response = await fetch("/api/settings", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-admin-key": adminKey
+        },
+        body: JSON.stringify({
+          video_url: videoUrl
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.error || "動画を変更できませんでした"
+        );
+      }
+
+      message.className = "message success";
+      message.textContent =
+        "新しい動画に変更しました。次回の定点記録から追跡を開始します。";
+
+      document.getElementById("videoUrl").value = "";
+
+    } catch (error) {
+
+      console.error(error);
+
+      message.className = "message error";
+
+      if (error.message === "Unauthorized") {
+        message.textContent =
+          "管理キーが違います。";
+      } else {
+        message.textContent =
+          "変更できませんでした。URLなどを確認してください。";
+      }
+
+    } finally {
+
+      button.disabled = false;
+      button.textContent =
+        "新しい動画に変更する";
+
+    }
+  });
+</script>
+
+</body>
+</html>
