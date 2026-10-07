@@ -16,7 +16,9 @@ export default async function handler(req, res) {
 
   try {
     const response = await fetch(
-      `${supabaseUrl}/rest/v1/tiktok_snapshots?select=video_id,video_url,description,snapshot_date,views,likes,comments,shares,saves,recorded_at&order=snapshot_date.desc,recorded_at.desc`,
+      `${supabaseUrl}/rest/v1/tiktok_snapshots` +
+      `?select=video_id,video_url,description,snapshot_date,snapshot_hour,views,likes,comments,shares,saves,recorded_at` +
+      `&order=recorded_at.desc`,
       {
         method: "GET",
         headers: {
