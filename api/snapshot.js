@@ -156,10 +156,17 @@ export default async function handler(req, res) {
     const tiktokData = await tiktokResponse.json();
 
     if (!tiktokResponse.ok) {
-      return res.status(tiktokResponse.status).json({
-        error: "TikTok data could not be retrieved"
-      });
-    }
+  console.error(
+    "QuanticData request failed:",
+    tiktokResponse.status
+  );
+
+  return res.status(tiktokResponse.status).json({
+    error: "TikTok data could not be retrieved",
+    failed_at: "QuanticData",
+    upstream_status: tiktokResponse.status
+  });
+}
 
    const results =
   tiktokData?.payload?.results ||
@@ -221,11 +228,20 @@ if (!Array.isArray(results) || results.length === 0) {
     const savedData = await saveResponse.json();
 
     if (!saveResponse.ok) {
-      return res.status(saveResponse.status).json({
-        error: "Supabase save failed",
-        details: savedData
-      });
-    }
+  console.error(
+    "Supabase save failed:",
+    saveResponse.status,
+    savedData?.code || "unknown",
+    savedData?.message || "unknown"
+  );
+
+  return res.status(saveResponse.status).json({
+    error: "Supabase save failed",
+    failed_at: "Supabase",
+    upstream_status: saveResponse.status,
+    error_code: savedData?.code || null
+  });
+}
 
     return res.status(200).json({
       success: true,
