@@ -1,17 +1,14 @@
+
 <!DOCTYPE html>
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
   <title>TikTok Tracker</title>
-
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
   <style>
-    * {
-      box-sizing: border-box;
-    }
+    * { box-sizing: border-box; }
 
     body {
       margin: 0;
@@ -27,15 +24,8 @@
       text-align: center;
     }
 
-    header h1 {
-      margin: 0;
-      font-size: 22px;
-    }
-
-    header p {
-      margin: 6px 0 0;
-      font-size: 12px;
-    }
+    header h1 { margin: 0; font-size: 22px; }
+    header p { margin: 6px 0 0; font-size: 12px; }
 
     main {
       width: min(100% - 24px, 700px);
@@ -63,9 +53,7 @@
       text-align: center;
     }
 
-    .main-count .label {
-      font-size: 14px;
-    }
+    .main-count .label { font-size: 14px; }
 
     .main-count .number {
       display: block;
@@ -140,9 +128,7 @@
       border-bottom: 1px solid #ddd;
     }
 
-    .record:last-child {
-      border-bottom: none;
-    }
+    .record:last-child { border-bottom: none; }
 
     .record-date {
       margin-bottom: 6px;
@@ -169,6 +155,27 @@
       line-height: 1.7;
     }
 
+    .record-failed {
+      background: #fff5f5;
+      margin: 8px -8px;
+      padding: 13px 8px;
+      border-left: 4px solid #d40000;
+      border-radius: 5px;
+    }
+
+    .failure-label {
+      color: #d40000;
+      font-size: 17px;
+      font-weight: bold;
+    }
+
+    .failure-note {
+      margin-top: 5px;
+      color: #777;
+      font-size: 11px;
+      line-height: 1.6;
+    }
+
     .no-record {
       color: #777;
       font-size: 12px;
@@ -183,17 +190,9 @@
     }
 
     @media (max-width: 480px) {
-      header h1 {
-        font-size: 20px;
-      }
-
-      .main-count .number {
-        font-size: 32px;
-      }
-
-      .graph-wrap {
-        height: 260px;
-      }
+      header h1 { font-size: 20px; }
+      .main-count .number { font-size: 32px; }
+      .graph-wrap { height: 260px; }
     }
   </style>
 </head>
@@ -208,25 +207,19 @@
 <main>
 
   <section class="card">
-
     <div class="video-title" id="videoTitle">
       TikTokデータを読み込んでいます...
     </div>
 
     <div class="main-count">
       <span class="label">再生数</span>
-
-      <span class="number" id="views">
-        ---
-      </span>
-
+      <span class="number" id="views">---</span>
       <div class="difference" id="viewsDiff">
         前回記録比：---
       </div>
     </div>
 
     <div class="stats">
-
       <div class="stat">
         <span class="stat-label">いいね</span>
         <span class="stat-number" id="likes">---</span>
@@ -246,21 +239,15 @@
         <span class="stat-label">保存</span>
         <span class="stat-number" id="saves">---</span>
       </div>
-
     </div>
 
     <div class="updated" id="updated">
       最新記録を読み込んでいます...
     </div>
-
   </section>
 
-
   <section class="card">
-
-    <h2 class="section-title">
-      DAY1〜DAY7 再生数推移
-    </h2>
+    <h2 class="section-title">DAY1〜DAY7 再生数推移</h2>
 
     <div class="graph-wrap">
       <canvas id="viewsChart"></canvas>
@@ -268,66 +255,43 @@
 
     <div class="graph-note">
       動画の追跡開始をDAY1として、3時間ごとの定点記録を表示します。<br>
-      DAY1〜DAY7の7日間が対象です。
+      DAY1〜DAY7の7日間が対象です。<br>
+      取得失敗した時間帯の再生数は補完しません。
     </div>
-
   </section>
 
-
   <section class="card">
-
-    <h2 class="section-title">
-      3時間ごとの定点記録
-    </h2>
+    <h2 class="section-title">3時間ごとの定点記録</h2>
 
     <div id="history">
       <div class="no-record">
         記録を読み込んでいます...
       </div>
     </div>
-
   </section>
 
 </main>
-
 
 <footer>
   非公式ファンサイト<br>
   作成者：@mtkwk_info1126
 </footer>
 
-
 <script>
-
   let viewsChart = null;
 
-
-  const formatNumber = (number) => {
-    return Number(number || 0).toLocaleString("ja-JP");
-  };
-
+  const formatNumber = (number) =>
+    Number(number ?? 0).toLocaleString("ja-JP");
 
   const formatDifference = (number) => {
-
-    const value = Number(number || 0);
-
-    if (value > 0) {
-      return "+" + formatNumber(value);
-    }
-
-    if (value < 0) {
-      return "−" + formatNumber(Math.abs(value));
-    }
-
+    const value = Number(number ?? 0);
+    if (value > 0) return "+" + formatNumber(value);
+    if (value < 0) return "−" + formatNumber(Math.abs(value));
     return "±0";
   };
 
-
   const formatDateTime = (dateString) => {
-
-    if (!dateString) {
-      return "---";
-    }
+    if (!dateString) return "---";
 
     return new Date(dateString).toLocaleString("ja-JP", {
       timeZone: "Asia/Tokyo",
@@ -340,458 +304,411 @@
   };
 
   const formatSnapshotDateTime = (record) => {
-
     if (
       !record ||
       !record.snapshot_date ||
-      record.snapshot_hour === null ||
-      record.snapshot_hour === undefined
+      record.snapshot_hour == null
     ) {
       return "---";
     }
 
-    const hour =
-      String(record.snapshot_hour).padStart(2, "0");
+    const hour = String(record.snapshot_hour).padStart(2, "0");
 
-    return `${record.snapshot_date.replaceAll("-", "/")} ${hour}:00`;
+    return (
+      record.snapshot_date.replaceAll("-", "/") +
+      " " + hour + ":00"
+    );
+  };
+
+  // HTML内に外部データを安全に表示するための処理
+  const escapeHtml = (value) =>
+    String(value ?? "").replace(/[&<>"']/g, (character) => {
+      const replacements = {
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;"
+      };
+      return replacements[character];
+    });
+
+  // 時間枠の並び替え用
+  const slotKey = (item) => {
+    const date = String(item.snapshot_date || "");
+    const hour = String(item.snapshot_hour ?? 0).padStart(2, "0");
+    return date + "T" + hour;
+  };
+
+  // 追跡開始から何日目かを計算
+  const getDayNumber = (dateString, trackingStartedAt) => {
+    if (!dateString || !trackingStartedAt) return null;
+
+    const start = new Date(trackingStartedAt);
+    const time = new Date(dateString);
+
+    if (
+      Number.isNaN(start.getTime()) ||
+      Number.isNaN(time.getTime())
+    ) {
+      return null;
+    }
+
+    const elapsed = time - start;
+    if (elapsed < 0) return null;
+
+    return Math.floor(elapsed / 86400000) + 1;
+  };
+
+  // 日本時間の時間枠を日時に変換
+  const slotDate = (item) => {
+    if (!item.snapshot_date || item.snapshot_hour == null) {
+      return null;
+    }
+
+    const hour = String(item.snapshot_hour).padStart(2, "0");
+
+    return new Date(
+      item.snapshot_date + "T" + hour + ":00:00+09:00"
+    );
   };
 
   function createGraph(records, trackingStartedAt) {
+    if (!trackingStartedAt) return;
 
-    if (!trackingStartedAt) {
-      return;
-    }
+    const startTime = new Date(trackingStartedAt);
+    if (Number.isNaN(startTime.getTime())) return;
 
-    const startTime =
-      new Date(trackingStartedAt);
+    const graphRecords = [...records]
+      .filter((record) => {
+        if (!record.recorded_at) return false;
 
-    if (Number.isNaN(startTime.getTime())) {
-      return;
-    }
+        const recordTime = new Date(record.recorded_at);
+        const elapsed = recordTime - startTime;
 
-    const sevenDays =
-      7 * 24 * 60 * 60 * 1000;
-
-
-    const graphRecords =
-      [...records]
-        .filter(record => {
-
-          if (!record.recorded_at) {
-            return false;
-          }
-
-          const recordTime =
-            new Date(record.recorded_at);
-
-          const elapsed =
-            recordTime - startTime;
-
-          return (
-            elapsed >= 0 &&
-            elapsed < sevenDays
-          );
-        })
-        .sort(
-          (a, b) =>
-            new Date(a.recorded_at) -
-            new Date(b.recorded_at)
-        );
-
-
-    if (graphRecords.length === 0) {
-      return;
-    }
-
-
-    const labels =
-      graphRecords.map(record => {
-
-        const recordTime =
-          new Date(record.recorded_at);
-
-        const elapsed =
-          recordTime - startTime;
-
-        const day =
-          Math.floor(
-            elapsed /
-            (24 * 60 * 60 * 1000)
-          ) + 1;
-
-       const japanTime =
-  String(record.snapshot_hour).padStart(2, "0") +
-  ":00";
-
-        return `DAY${day} ${japanTime}`;
-      });
-
-
-    const views =
-      graphRecords.map(record =>
-        Number(record.views || 0)
+        return elapsed >= 0 && elapsed < 7 * 86400000;
+      })
+      .sort(
+        (a, b) =>
+          new Date(a.recorded_at) - new Date(b.recorded_at)
       );
 
+    if (graphRecords.length === 0) return;
 
-    const context =
-      document
-        .getElementById("viewsChart")
-        .getContext("2d");
+    const labels = graphRecords.map((record) => {
+      const day = getDayNumber(
+        record.recorded_at,
+        trackingStartedAt
+      );
 
+      const hour = String(
+        record.snapshot_hour ?? 0
+      ).padStart(2, "0");
 
-    if (viewsChart) {
-      viewsChart.destroy();
-    }
+      return "DAY" + day + " " + hour + ":00";
+    });
 
+    const views = graphRecords.map((record) =>
+      Number(record.views ?? 0)
+    );
 
-    viewsChart =
-      new Chart(context, {
+    const context = document
+      .getElementById("viewsChart")
+      .getContext("2d");
 
-        type: "line",
+    if (viewsChart) viewsChart.destroy();
 
-        data: {
+    viewsChart = new Chart(context, {
+      type: "line",
 
-          labels: labels,
+      data: {
+        labels,
+        datasets: [{
+          label: "再生数",
+          data: views,
+          borderWidth: 2,
+          pointRadius: 2,
+          pointHoverRadius: 5,
+          tension: 0.25,
+          spanGaps: false
+        }]
+      },
 
-          datasets: [
-            {
-              label: "再生数",
-              data: views,
-              borderWidth: 2,
-              pointRadius: 2,
-              pointHoverRadius: 5,
-              tension: 0.25
-            }
-          ]
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+
+        interaction: {
+          intersect: false,
+          mode: "index"
         },
 
-        options: {
+        plugins: {
+          legend: { display: false },
 
-          responsive: true,
-
-          maintainAspectRatio: false,
-
-          interaction: {
-            intersect: false,
-            mode: "index"
-          },
-
-          plugins: {
-
-            legend: {
-              display: false
-            },
-
-            tooltip: {
-
-              callbacks: {
-
-                label: function(context) {
-
-                  return (
-                    "再生数 " +
-                    formatNumber(context.raw) +
-                    " 回"
-                  );
-                }
+          tooltip: {
+            callbacks: {
+              label: function(context) {
+                return (
+                  "再生数 " +
+                  formatNumber(context.raw) +
+                  " 回"
+                );
               }
             }
+          }
+        },
+
+        scales: {
+          x: {
+            ticks: {
+              maxRotation: 0,
+              autoSkip: true,
+              maxTicksLimit: 8
+            },
+            grid: { display: false }
           },
 
-          scales: {
-
-            x: {
-
-              ticks: {
-                maxRotation: 0,
-                autoSkip: true,
-                maxTicksLimit: 8
-              },
-
-              grid: {
-                display: false
-              }
-            },
-
-            y: {
-
-              ticks: {
-
-                callback: function(value) {
-                  return formatNumber(value);
-                }
+          y: {
+            ticks: {
+              callback: function(value) {
+                return formatNumber(value);
               }
             }
           }
         }
-      });
+      }
+    });
   }
 
+  function renderSuccess(record, previousRecord, trackingStartedAt) {
+    const dateTime = slotDate(record);
+
+    const day = getDayNumber(
+      dateTime ? dateTime.toISOString() : null,
+      trackingStartedAt
+    );
+
+    const dayText = day && day <= 7
+      ? "DAY" + day + " / "
+      : "";
+
+    let differenceText = "最初の記録";
+
+    if (previousRecord) {
+      const difference =
+        Number(record.views ?? 0) -
+        Number(previousRecord.views ?? 0);
+
+      differenceText =
+        "前回比 " + formatDifference(difference);
+    }
+
+    return `
+      <div class="record">
+        <div class="record-date">
+          ${dayText}
+          ${escapeHtml(record.snapshot_date)}
+          ${String(record.snapshot_hour).padStart(2, "0")}:00枠
+        </div>
+
+        <div class="record-number">
+          ${formatNumber(record.views)} 回
+        </div>
+
+        <div class="record-diff">
+          ${differenceText}
+        </div>
+
+        <div class="record-stats">
+          いいね ${formatNumber(record.likes)}
+          　
+          コメント ${formatNumber(record.comments)}
+          <br>
+          シェア ${formatNumber(record.shares)}
+          　
+          保存 ${formatNumber(record.saves)}
+        </div>
+      </div>
+    `;
+  }
+
+  function renderFailure(failure, trackingStartedAt) {
+    const dateTime = slotDate(failure);
+
+    const day = getDayNumber(
+      dateTime ? dateTime.toISOString() : null,
+      trackingStartedAt
+    );
+
+    const dayText = day && day <= 7
+      ? "DAY" + day + " / "
+      : "";
+
+    const hour = String(
+      failure.snapshot_hour
+    ).padStart(2, "0");
+
+    return `
+      <div class="record record-failed">
+        <div class="record-date">
+          ${dayText}
+          ${escapeHtml(failure.snapshot_date)}
+          ${hour}:00枠
+        </div>
+
+        <div class="failure-label">
+          自動取得失敗
+        </div>
+
+        <div class="failure-note">
+          この時間帯のデータは取得できませんでした。<br>
+          再生数・いいね等は記録されていません。
+        </div>
+      </div>
+    `;
+  }
 
   async function loadData() {
-
     try {
-
-      // Supabaseに保存済みのデータだけ取得
-      // 公開サイトからQuanticDataは呼ばない
-      const response =
-        await fetch("/api/records");
-
+      // 保存済みの成功・失敗記録を取得
+      const response = await fetch("/api/records");
 
       if (!response.ok) {
-        throw new Error(
-          "履歴データの取得に失敗しました"
-        );
+        throw new Error("履歴データの取得に失敗しました");
       }
 
+      const result = await response.json();
 
-      const result =
-        await response.json();
+      const currentVideo = result.current_video || {};
+      const trackingStartedAt = currentVideo.tracking_started_at;
 
+      const records = Array.isArray(result.data)
+        ? result.data
+        : [];
 
-      const currentVideo =
-        result.current_video || {};
+      const failures = Array.isArray(result.failures)
+        ? result.failures
+        : [];
 
+      // 成功記録は時間枠順に並べる
+      const sortedRecords = [...records].sort((a, b) =>
+        slotKey(b).localeCompare(slotKey(a))
+      );
 
-      const trackingStartedAt =
-        currentVideo.tracking_started_at;
+      // 成功した時間枠に失敗表示は出さない
+      const successSlots = new Set(
+        sortedRecords.map(slotKey)
+      );
 
+      const validFailures = failures.filter(
+        (failure) => !successSlots.has(slotKey(failure))
+      );
 
-      const records =
-        Array.isArray(result.data)
-          ? result.data
-          : [];
+      // 成功と失敗を合わせて時刻順に表示
+      const historyItems = [
+        ...sortedRecords.map((record) => ({
+          type: "success",
+          item: record
+        })),
 
+        ...validFailures.map((failure) => ({
+          type: "failure",
+          item: failure
+        }))
+      ].sort((a, b) =>
+        slotKey(b.item).localeCompare(slotKey(a.item))
+      );
 
-      if (records.length === 0) {
-
-        document.getElementById(
-          "videoTitle"
-        ).textContent =
+      if (sortedRecords.length === 0) {
+        document.getElementById("videoTitle").textContent =
           "現在の動画は設定済みです。最初の定点記録を待っています。";
 
-        document.getElementById(
-          "updated"
-        ).textContent =
+        document.getElementById("updated").textContent =
           trackingStartedAt
-            ? "追跡開始：" +
-              formatDateTime(trackingStartedAt)
+            ? "追跡開始：" + formatDateTime(trackingStartedAt)
             : "最初の定点記録を待っています。";
 
-        document.getElementById(
-          "history"
-        ).innerHTML = `
+        document.getElementById("viewsDiff").textContent =
+          "前回記録比：---";
+
+      } else {
+        const latestRecord = sortedRecords[0];
+
+        document.getElementById("videoTitle").textContent =
+          latestRecord.description || "TikTok動画";
+
+        document.getElementById("views").textContent =
+          formatNumber(latestRecord.views);
+
+        document.getElementById("likes").textContent =
+          formatNumber(latestRecord.likes);
+
+        document.getElementById("comments").textContent =
+          formatNumber(latestRecord.comments);
+
+        document.getElementById("shares").textContent =
+          formatNumber(latestRecord.shares);
+
+        document.getElementById("saves").textContent =
+          formatNumber(latestRecord.saves);
+
+        if (sortedRecords.length >= 2) {
+          const difference =
+            Number(sortedRecords[0].views) -
+            Number(sortedRecords[1].views);
+
+          document.getElementById("viewsDiff").textContent =
+            "前回記録比：" + formatDifference(difference);
+
+        } else {
+          document.getElementById("viewsDiff").textContent =
+            "前回記録比：記録開始前";
+        }
+
+        document.getElementById("updated").textContent =
+          "最新定点記録：" +
+          formatSnapshotDateTime(latestRecord);
+
+        createGraph(sortedRecords, trackingStartedAt);
+      }
+
+      const historyElement =
+        document.getElementById("history");
+
+      if (historyItems.length === 0) {
+        historyElement.innerHTML = `
           <div class="no-record">
             まだ3時間ごとの記録がありません。
           </div>
         `;
-
         return;
       }
 
-
-      // records.jsですでに現在の動画だけに
-      // 絞り込まれている
-      const latestRecord =
-        records[0];
-
-
-      document.getElementById(
-        "videoTitle"
-      ).textContent =
-        latestRecord.description ||
-        "TikTok動画";
-
-
-      document.getElementById(
-        "views"
-      ).textContent =
-        formatNumber(latestRecord.views);
-
-
-      document.getElementById(
-        "likes"
-      ).textContent =
-        formatNumber(latestRecord.likes);
-
-
-      document.getElementById(
-        "comments"
-      ).textContent =
-        formatNumber(latestRecord.comments);
-
-
-      document.getElementById(
-        "shares"
-      ).textContent =
-        formatNumber(latestRecord.shares);
-
-
-      document.getElementById(
-        "saves"
-      ).textContent =
-        formatNumber(latestRecord.saves);
-
-
-      if (records.length >= 2) {
-
-        const difference =
-          Number(records[0].views) -
-          Number(records[1].views);
-
-        document.getElementById(
-          "viewsDiff"
-        ).textContent =
-          "前回記録比：" +
-          formatDifference(difference);
-
-      } else {
-
-        document.getElementById(
-          "viewsDiff"
-        ).textContent =
-          "前回記録比：記録開始前";
-      }
-
-
-      document.getElementById(
-  "updated"
-).textContent =
-  "最新定点記録：" +
-  formatSnapshotDateTime(latestRecord);
-
-
-      const historyElement =
-        document.getElementById(
-          "history"
-        );
-
-
-      historyElement.innerHTML =
-        records.map(
-          (record, index) => {
-
-            let differenceText =
-              "最初の記録";
-
-
-            if (index < records.length - 1) {
-
-              const difference =
-                Number(record.views) -
-                Number(
-                  records[index + 1].views
-                );
-
-              differenceText =
-                "前回比 " +
-                formatDifference(difference);
-            }
-
-
-            const hour =
-              record.snapshot_hour !== null &&
-              record.snapshot_hour !== undefined
-                ? String(
-                    record.snapshot_hour
-                  ).padStart(2, "0") +
-                  ":00枠"
-                : "";
-
-
-            let dayText = "";
-
-
-            if (
-              trackingStartedAt &&
-              record.recorded_at
-            ) {
-
-              const startTime =
-                new Date(trackingStartedAt);
-
-              const recordTime =
-                new Date(record.recorded_at);
-
-              const elapsed =
-                recordTime - startTime;
-
-
-              if (
-                !Number.isNaN(startTime.getTime()) &&
-                elapsed >= 0
-              ) {
-
-                const day =
-                  Math.floor(
-                    elapsed /
-                    (24 * 60 * 60 * 1000)
-                  ) + 1;
-
-                if (day <= 7) {
-                  dayText = `DAY${day} / `;
-                }
-              }
-            }
-
-
-            return `
-              <div class="record">
-
-                <div class="record-date">
-                  ${dayText}
-                  ${record.snapshot_date}
-                  ${hour}
-                </div>
-
-                <div class="record-number">
-                  ${formatNumber(record.views)}
-                  回
-                </div>
-
-                <div class="record-diff">
-                  ${differenceText}
-                </div>
-
-                <div class="record-stats">
-                  いいね
-                  ${formatNumber(record.likes)}
-                  　
-                  コメント
-                  ${formatNumber(record.comments)}
-                  <br>
-
-                  シェア
-                  ${formatNumber(record.shares)}
-                  　
-                  保存
-                  ${formatNumber(record.saves)}
-                </div>
-
-              </div>
-            `;
+      historyElement.innerHTML = historyItems
+        .map(({ type, item }) => {
+          if (type === "failure") {
+            return renderFailure(item, trackingStartedAt);
           }
-        ).join("");
 
+          const index = sortedRecords.indexOf(item);
+          const previousRecord = sortedRecords[index + 1];
 
-      createGraph(
-        records,
-        trackingStartedAt
-      );
-
+          return renderSuccess(
+            item,
+            previousRecord,
+            trackingStartedAt
+          );
+        })
+        .join("");
 
     } catch (error) {
-
       console.error(error);
 
-      document.getElementById(
-        "updated"
-      ).textContent =
+      document.getElementById("updated").textContent =
         "データを取得できませんでした。";
 
-      document.getElementById(
-        "history"
-      ).innerHTML = `
+      document.getElementById("history").innerHTML = `
         <div class="no-record">
           定点記録を取得できませんでした。
         </div>
@@ -799,9 +716,7 @@
     }
   }
 
-
   loadData();
-
 </script>
 
 </body>
