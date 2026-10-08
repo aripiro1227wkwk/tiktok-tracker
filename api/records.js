@@ -1,3 +1,4 @@
+
 export default async function handler(req, res) {
   if (req.method !== "GET") {
     return res.status(405).json({
@@ -14,19 +15,18 @@ export default async function handler(req, res) {
     });
   }
 
+  const headers = {
+    apikey: supabaseSecretKey,
+    Authorization: `Bearer ${supabaseSecretKey}`
+  };
+
   try {
-    // 現在追跡中の動画を取得
+    // 現在追跡中の動画
     const settingsResponse = await fetch(
       `${supabaseUrl}/rest/v1/tiktok_settings` +
       `?select=video_id,video_url,tracking_started_at` +
       `&order=id.desc&limit=1`,
-      {
-        method: "GET",
-        headers: {
-          apikey: supabaseSecretKey,
-          Authorization: `Bearer ${supabaseSecretKey}`
-        }
-      }
+      { headers }
     );
 
     const settingsData = await settingsResponse.json();
@@ -45,30 +45,56 @@ export default async function handler(req, res) {
     }
 
     const currentVideo = settingsData[0];
+    const videoId = encodeURIComponent(currentVideo.video_id);
 
-    // 現在追跡中の動画の記録だけ取得
+    // 成功した定点記録
     const recordsResponse = await fetch(
       `${supabaseUrl}/rest/v1/tiktok_snapshots` +
-      `?video_id=eq.${encodeURIComponent(currentVideo.video_id)}` +
+      `?video_id=eq.${videoId}` +
       `&select=video_id,video_url,description,snapshot_date,snapshot_hour,views,likes,comments,shares,saves,recorded_at` +
       `&order=recorded_at.desc`,
-      {
-        method: "GET",
-        headers: {
-          apikey: supabaseSecretKey,
-          Authorization: `Bearer ${supabaseSecretKey}`
-        }
-      }
+      { headers }
     );
-
-    const records = await recordsResponse.json();
 
     if (!recordsResponse.ok) {
       return res.status(recordsResponse.status).json({
-        error: "Supabase read failed",
-        details: records
+        error: "Supabase records read failed",
+        details: await recordsResponse.text()
       });
     }
+
+    const records = await recordsResponse.json();
+
+    // 取得失敗した時間枠
+    const failuresResponse = await fetch(
+      `${supabaseUrl}/rest/v1/tiktok_snapshot_failures` +
+      `?video_id=eq.${videoId}` +
+      `&select=video_id,snapshot_date,snapshot_hour,error_message,created_at` +
+      `&order=snapshot_date.desc,snapshot_hour.desc`,
+      { headers }
+    );
+
+    if (!failuresResponse.ok) {
+      return res.status(failuresResponse.status).json({
+        error: "Supabase failures read failed",
+        details: await failuresResponse.text()
+      });
+    }
+
+    const failures = await failuresResponse.json();
+
+    // 成功記録が存在する時間枠は成功を優先
+    const successfulSlots = new Set(
+      records.map(record =>
+        `${record.snapshot_date}_${record.snapshot_hour}`
+      )
+    );
+
+    const validFailures = failures.filter(failure =>
+      !successfulSlots.has(
+        `${failure.snapshot_date}_${failure.snapshot_hour}`
+      )
+    );
 
     return res.status(200).json({
       success: true,
@@ -80,7 +106,10 @@ export default async function handler(req, res) {
       },
 
       count: records.length,
-      data: records
+      data: records,
+
+      failure_count: validFailures.length,
+      failures: validFailures
     });
 
   } catch (error) {
